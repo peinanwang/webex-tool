@@ -1,0 +1,14 @@
+# Secrets
+.env
+
+# Local data (SQLite DB, digests)
+data/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS / editor
+.DS_Store
