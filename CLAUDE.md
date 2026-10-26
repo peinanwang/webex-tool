@@ -26,7 +26,7 @@ I'm new to FastAPI, MCP, and webhooks (comfortable with Python and general softw
   - `webhook` — Webex POSTs `messages:created` to us through ngrok. Instant; needs a public URL. Default for home/personal setup.
   - `polling` — background loop asks Webex for new messages every `POLL_INTERVAL` seconds (10–15). Outbound HTTPS only — no ngrok, no public URL. For the company network, where tunnels are likely blocked or forbidden.
   - Both modes feed one shared `process_message(id)` function; rules, bot relay, and DB logging must not care which mode delivered the message.
-- `mcp_server/` — FastMCP over stdio, launched by the IDE. Rules CRUD, query suppressed messages, digest input/save.
+- `mcp_server/` — MCP server over stdio, launched by the IDE (`.mcp.json` for Claude Code, `.vscode/mcp.json` for Copilot). Rules CRUD, message queries, digest input/save. Never `print()` there — stdout is the MCP channel.
 - `shared/` — `db.py`, `webex_client.py` (REST + token refresh), `rules.py`.
 - `scripts/login.py` — one-time OAuth code flow, stores refresh token in DB.
 - `data/focus.db` (SQLite, WAL mode), `data/digests/YYYY-MM-DD.md`.
@@ -35,7 +35,7 @@ I'm new to FastAPI, MCP, and webhooks (comfortable with Python and general softw
 
 ## Stack
 
-Python 3.11+, FastAPI, uvicorn, httpx, official `mcp` SDK (FastMCP), SQLite, APScheduler (optional), ngrok (webhook mode only). No frontend in v1.
+Python 3.11+, FastAPI, uvicorn, httpx, official `mcp` SDK **v2** (`from mcp.server.mcpserver import MCPServer` — v1's `FastMCP` was renamed; same `@mcp.tool()` / `@mcp.prompt()` decorators), SQLite, APScheduler (optional), ngrok (webhook mode only). No frontend in v1.
 
 ## Webex facts (don't re-discover these)
 
@@ -53,7 +53,8 @@ Python 3.11+, FastAPI, uvicorn, httpx, official `mcp` SDK (FastMCP), SQLite, APS
 ## Rules semantics
 
 Actions: `notify` | `digest` | `ignore`. Match on sender, space, keyword, or mention-of-A.
-Precedence: ignore > notify > digest. Defaults: @mention of A → notify; unmatched → digest.
+Precedence: ignore > notify > digest (ties → oldest rule). Defaults apply only when no rule matched: @mention of A → notify; unmatched → digest.
+Rules always beat defaults, so a `digest` space rule silences @mentions there too — unless there's an explicit `notify mention` rule (seeded by `scripts/seed_rules.py`). Logic lives in `shared/rules.py` (pure, unit-tested).
 
 Message `status` values: `notify` (relayed), `digest` (held, goes in summary), `ignore` (held, left out of summary by default), `self` (sent by A; context only).
 

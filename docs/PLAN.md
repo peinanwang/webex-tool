@@ -4,7 +4,7 @@ Goal: keep Webex quiet except for messages that match A's rules. Matching messag
 
 **Two listener modes:** `webhook` (instant, uses ngrok; for home/personal setup) and `polling` (checks every 10–15s, outbound only; for the company network where ngrok is likely blocked). Both feed the same pipeline, so rules, bot relay, MCP, and digest work the same either way.
 
-Work one phase at a time. A phase is done only when its **checkpoint** passes. Detailed action items for each phase are in [`phases/`](phases/).
+Work one phase at a time. A phase is done only when its **checkpoint** passes. Detailed action items for each phase are in [`phases/`](phases/). Hands-on checks for Phases 3–6 are in [VERIFY.md](VERIFY.md).
 
 ## Phases
 
@@ -43,3 +43,4 @@ Add a dated line each time a phase is finished or a decision changes.
 - 2026-10-21 — Phase 0 done: accounts, spaces, Priority bot, integration, ngrok. Company network questions for IT still open.
 - 2026-10-21 — Phase 1 done: scaffold, config, SQLite (WAL) with kv/messages/rules.
 - 2026-10-21 — Phase 2 done: OAuth login (with `--paste` fallback), auto token refresh, Webex client helpers, bot test message delivered.
+- 2026-10-22 — Built Phase 3 polling mode and Phases 4–6 (rules engine + relay, MCP server, digest). Unit tests and tool checks pass; checkpoints with real messages are in [VERIFY.md](VERIFY.md). Decision: rules always beat defaults; `notify mention` is seeded as an explicit rule.

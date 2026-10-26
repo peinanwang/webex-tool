@@ -1,0 +1,388 @@
+<title>Webex Focus</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one readable column, with the architecture diagram breaking out wider. Amber = "this pinged you", slate = "held for later". */
+  :root {
+    --bg: #F3F5F6;
+    --surface: #FFFFFF;
+    --fg: #14212B;
+    --muted: #56646F;
+    --line: #D3DAE0;
+    --accent: #A85A0C;
+    --accent-soft: #F7E6D1;
+    --held: #44637A;
+    --held-soft: #E0E8EE;
+    --quiet: #7D8992;
+    --quiet-soft: #ECEFF1;
+    --code-bg: #E9EDF0;
+    --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --body: "IBM Plex Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F161C; --surface: #17212A; --fg: #E5EBEF; --muted: #9AA7B1; --line: #2A3743;
+      --accent: #E99B4B; --accent-soft: #3B2914; --held: #94B5CC; --held-soft: #1D2C38;
+      --quiet: #7F8C96; --quiet-soft: #1C252D; --code-bg: #121B22; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F161C; --surface: #17212A; --fg: #E5EBEF; --muted: #9AA7B1; --line: #2A3743;
+    --accent: #E99B4B; --accent-soft: #3B2914; --held: #94B5CC; --held-soft: #1D2C38;
+    --quiet: #7F8C96; --quiet-soft: #1C252D; --code-bg: #121B22; color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 400 1rem/1.6 var(--body);
+  }
+  .page {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding-block: 3rem 4rem;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+  }
+  h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.15; }
+  h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); font-weight: 700; letter-spacing: -0.02em; }
+  h2 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; }
+  h3 { font-size: 1.1rem; font-weight: 600; }
+  p { margin: 0; max-width: 66ch; }
+  .eyebrow {
+    font: 500 0.75rem/1 var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  section { display: flex; flex-direction: column; gap: 1.1rem; }
+  .muted { color: var(--muted); }
+  code, .mono { font-family: var(--mono); font-size: 0.88em; }
+  code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 2.5rem; align-items: center; }
+  .hero-text { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+  .lede { font-size: 1.2rem; line-height: 1.5; }
+  .chat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    min-width: 0;
+  }
+  .chat-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; }
+  .chat-head strong { font-family: var(--display); font-weight: 600; }
+  .chat-head span { font: 400 0.72rem var(--mono); color: var(--accent); }
+  .row { display: flex; justify-content: space-between; gap: 0.75rem; font-size: 0.85rem; color: var(--quiet); }
+  .row b { font-weight: 500; }
+  .bubble {
+    background: var(--accent-soft);
+    border-radius: 10px;
+    padding: 0.7rem 0.85rem;
+    font-size: 0.92rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .bubble .why { font: 400 0.75rem var(--mono); color: var(--muted); }
+  .chat-note { font-size: 0.78rem; color: var(--muted); }
+
+  /* Diagram */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  .diagram svg { display: block; width: 100%; min-width: 760px; height: auto; }
+  .d-box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+  .d-box-strong { fill: var(--bg); stroke: var(--fg); stroke-width: 1.5; }
+  .d-box-accent { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+  .d-db { fill: var(--held-soft); stroke: var(--held); stroke-width: 1.5; }
+  .d-title { fill: var(--fg); font: 600 15px var(--display); }
+  .d-text { fill: var(--muted); font: 400 12.5px var(--body); }
+  .d-step { fill: var(--fg); font: 400 13px var(--body); }
+  .d-label { fill: var(--muted); font: 500 11.5px var(--mono); }
+  .d-label-accent { fill: var(--accent); font: 500 11.5px var(--mono); }
+  .d-arrow { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+  .d-arrow-accent { stroke: var(--accent); stroke-width: 2; fill: none; }
+  .d-head { fill: var(--muted); }
+  .d-head-accent { fill: var(--accent); }
+  .legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: 0.85rem; color: var(--muted); }
+
+  /* Status pills */
+  .pill {
+    display: inline-block;
+    font: 500 0.75rem/1 var(--mono);
+    padding: 0.3em 0.6em;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .pill.notify { background: var(--accent-soft); color: var(--accent); }
+  .pill.digest { background: var(--held-soft); color: var(--held); }
+  .pill.ignore { background: var(--quiet-soft); color: var(--quiet); }
+  .pill.self { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 500 0.72rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td.why { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+
+  /* Statuses */
+  .statuses { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+  .status { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+  .status p { font-size: 0.92rem; }
+
+  /* Log */
+  .log {
+    background: var(--code-bg);
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    font: 400 0.8rem/1.75 var(--mono);
+    overflow-x: auto;
+    white-space: pre;
+    margin: 0;
+  }
+  .log .n { color: var(--accent); font-weight: 500; }
+  .log .d { color: var(--held); font-weight: 500; }
+  .log .s { color: var(--muted); }
+
+  /* Two columns */
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.2rem; display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+  ul { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: 0.35rem; }
+  .asks { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .asks li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.85rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .asks q { font-style: normal; quotes: "“" "”" "‘" "’"; }
+  .asks .mono { color: var(--muted); font-size: 0.78rem; }
+
+  /* Status timeline */
+  .phases { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0; border-left: 2px solid var(--line); margin-left: 0.4rem; }
+  .phases li { position: relative; padding: 0 0 0.9rem 1.2rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: baseline; }
+  .phases li::before { content: ""; position: absolute; left: -7px; top: 0.45rem; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--quiet); }
+  .phases li.done::before { background: var(--held); border-color: var(--held); }
+  .phases li.built::before { background: var(--accent-soft); border-color: var(--accent); }
+  .phases .tag { font: 500 0.72rem var(--mono); color: var(--muted); }
+
+  footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 1.25rem; }
+
+  @media (max-width: 760px) {
+    .hero, .two { grid-template-columns: minmax(0, 1fr); }
+    .statuses { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 420px) {
+    .statuses { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+
+<main class="page">
+
+  <header class="hero">
+    <div class="hero-text">
+      <span class="eyebrow">Hackathon POC</span>
+      <h1>Webex Focus</h1>
+      <p class="lede">Mute Webex. Get pinged only for the messages that matter to you. Catch up on everything else when you're ready, by asking your AI assistant.</p>
+      <p class="muted">Webex can't filter its own notifications. Webex Focus does the filtering for you: a small service reads every new message, checks it against your rules, and a bot re-sends only the important ones into the one chat you keep unmuted.</p>
+    </div>
+    <div class="chat" aria-label="Example: what you see in Webex">
+      <div class="chat-head"><strong>Your Webex</strong><span>1 unmuted chat</span></div>
+      <div class="row"><b>Team Chat</b><span>muted · 14 new</span></div>
+      <div class="row"><b>Chatty colleague</b><span>muted · 6 new</span></div>
+      <div class="row"><b>Your manager</b><span>muted · 1 new</span></div>
+      <div class="bubble">
+        <strong>🔔 Your manager in a direct message:</strong>
+        <span>Can you review the launch doc before 3pm?</span>
+        <span class="why">why: rule#3 sender=manager@…</span>
+      </div>
+      <span class="chat-note">The Priority bot's chat is the only one that can ping you.</span>
+    </div>
+  </header>
+
+  <section>
+    <span class="eyebrow">How it works</span>
+    <h2>Two small programs and one database</h2>
+    <p>The <b>listener</b> runs all the time and decides what happens to each message. The <b>MCP server</b> lets you manage rules and read summaries from Claude Code or VS Code Copilot. They never talk to each other directly; they share one SQLite file.</p>
+    <div class="diagram">
+      <svg viewBox="0 0 980 440" role="img" aria-labelledby="dg-title dg-desc">
+        <title id="dg-title">Webex Focus architecture</title>
+        <desc id="dg-desc">Webex sends new messages to the listener, by webhook through ngrok or by polling. The listener fetches each message, applies the user's rules, and stores it with a status and reason in SQLite. For notify messages, the Priority bot pings the user. The MCP server reads and writes the same database and is used from Claude Code or Copilot.</desc>
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path class="d-head" d="M0 0 L10 5 L0 10 z"/>
+          </marker>
+          <marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path class="d-head-accent" d="M0 0 L10 5 L0 10 z"/>
+          </marker>
+        </defs>
+
+        <!-- Webex -->
+        <rect class="d-box" x="20" y="140" width="190" height="120" rx="12"/>
+        <text class="d-title" x="40" y="172">Webex</text>
+        <text class="d-text" x="40" y="198">Colleagues message you</text>
+        <text class="d-text" x="40" y="218">in 1:1s, groups, and</text>
+        <text class="d-text" x="40" y="238">team channels</text>
+
+        <!-- Webex → Listener -->
+        <line class="d-arrow" x1="210" y1="200" x2="348" y2="200" marker-end="url(#ah)"/>
+        <text class="d-label" x="279" y="188" text-anchor="middle">webhook (ngrok)</text>
+        <text class="d-label" x="279" y="222" text-anchor="middle">or polling, 10s</text>
+
+        <!-- Listener -->
+        <rect class="d-box-strong" x="350" y="80" width="260" height="220" rx="12"/>
+        <text class="d-title" x="372" y="112">Listener</text>
+        <text class="d-text" x="372" y="132">always on · your laptop</text>
+        <text class="d-step" x="372" y="172">1  Fetch the full message</text>
+        <text class="d-step" x="372" y="204">2  Check it against your rules</text>
+        <text class="d-step" x="372" y="236">3  Store it with a status</text>
+        <text class="d-step" x="390" y="256">and the reason</text>
+        <text class="d-text" x="372" y="284">skips the bot's own messages</text>
+
+        <!-- Listener → Bot -->
+        <line class="d-arrow-accent" x1="610" y1="115" x2="728" y2="115" marker-end="url(#ah-accent)"/>
+        <text class="d-label-accent" x="669" y="104" text-anchor="middle">notify only</text>
+
+        <!-- Bot -->
+        <rect class="d-box-accent" x="730" y="60" width="230" height="110" rx="12"/>
+        <text class="d-title" x="750" y="92">Priority bot</text>
+        <text class="d-text" x="750" y="118">Pings you in the one chat</text>
+        <text class="d-text" x="750" y="138">you keep unmuted, with</text>
+        <text class="d-text" x="750" y="158">the reason it fired</text>
+
+        <!-- Listener → DB -->
+        <line class="d-arrow" x1="480" y1="300" x2="480" y2="338" marker-end="url(#ah)"/>
+        <text class="d-label" x="492" y="325">every message</text>
+
+        <!-- DB -->
+        <path class="d-db" d="M400 350 v55 a80 14 0 0 0 160 0 v-55"/>
+        <ellipse class="d-db" cx="480" cy="350" rx="80" ry="14"/>
+        <text class="d-title" x="480" y="386" text-anchor="middle">SQLite</text>
+        <text class="d-text" x="480" y="406" text-anchor="middle">messages · rules</text>
+
+        <!-- DB ↔ MCP -->
+        <line class="d-arrow" x1="562" y1="372" x2="728" y2="372" marker-start="url(#ah)" marker-end="url(#ah)"/>
+        <text class="d-label" x="645" y="362" text-anchor="middle">reads &amp; writes</text>
+
+        <!-- Assistant -->
+        <rect class="d-box" x="730" y="205" width="230" height="80" rx="12"/>
+        <text class="d-title" x="750" y="235">Claude Code / Copilot</text>
+        <text class="d-text" x="750" y="260">You ask in plain English</text>
+
+        <!-- Assistant ↔ MCP -->
+        <line class="d-arrow" x1="845" y1="285" x2="845" y2="328" marker-start="url(#ah)" marker-end="url(#ah)"/>
+        <text class="d-label" x="857" y="312">stdio</text>
+
+        <!-- MCP -->
+        <rect class="d-box" x="730" y="330" width="230" height="80" rx="12"/>
+        <text class="d-title" x="750" y="360">MCP server</text>
+        <text class="d-text" x="750" y="385">rules · lookups · summaries</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><span class="pill notify">amber</span> reaches you right away</span>
+      <span><span class="pill digest">slate</span> held quietly for later</span>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">What happens to a message</span>
+    <h2>Every message gets one of four statuses</h2>
+    <div class="statuses">
+      <div class="status"><span class="pill notify">notify</span><p>Important. The bot pings you right away.</p></div>
+      <div class="status"><span class="pill digest">digest</span><p>Not urgent. Held silently and included in your summary.</p></div>
+      <div class="status"><span class="pill ignore">ignore</span><p>Noise. Held silently, left out of summaries, still searchable.</p></div>
+      <div class="status"><span class="pill self">self</span><p>Your own replies. Kept so summaries show both sides.</p></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Message</th><th>Result</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Your manager: “can you review this?”</td><td><span class="pill notify">notify</span></td><td class="why">rule: sender = manager</td></tr>
+          <tr><td>Chatty colleague: “lunch?”</td><td><span class="pill digest">digest</span></td><td class="why">no rule matched</td></tr>
+          <tr><td>Chatty colleague in Team Chat: “@you quick question”</td><td><span class="pill notify">notify</span></td><td class="why">rule: you were @mentioned</td></tr>
+          <tr><td>Anyone: “urgent: build is broken”</td><td><span class="pill notify">notify</span></td><td class="why">rule: keyword = urgent</td></tr>
+          <tr><td>Manager in a space you set to ignore: “urgent!!”</td><td><span class="pill ignore">ignore</span></td><td class="why">ignore beats notify</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">Rules match on <b>sender</b>, <b>space</b>, <b>keyword</b>, or <b>@mention</b>. When several match, the strongest wins: ignore, then notify, then digest. If nothing matches, an @mention notifies and everything else goes to the digest.</p>
+    <pre class="log" aria-label="Listener log example"><span class="n">[notify]</span> manager@…  in a direct message: 'can you review this?'   <span class="s">(rule#3 sender=manager@…)</span>
+<span class="d">[digest]</span> colleague@… in Team Chat: 'lunch anyone?'                 <span class="s">(default)</span>
+<span class="n">[notify]</span> colleague@… in Team Chat: '@you quick question'           <span class="s">(rule#1 mention)</span>
+<span class="s">[self]  </span> you@…       in Team Chat: 'on it'                         <span class="s">(self)</span></pre>
+  </section>
+
+  <section>
+    <span class="eyebrow">Talking to it</span>
+    <h2>Manage it from your AI assistant</h2>
+    <p>No settings screens. You ask Claude Code or Copilot, and it calls our MCP server's tools. Rule changes apply to the very next message.</p>
+    <ul class="asks">
+      <li><q>Notify me about anything that says ‘outage’</q><span class="mono">add_rule</span></li>
+      <li><q>If my colleague writes ‘lunch?’ in Team Chat, would I get pinged?</q><span class="mono">test_rule</span></li>
+      <li><q>Why didn't I get pinged for that message?</q><span class="mono">get_messages</span></li>
+      <li><q>Summarize what I missed today</q><span class="mono">get_digest_input → save_digest</span></li>
+      <li><q>Summarize everything from Monday to Wednesday</q><span class="mono">scope = all</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <span class="eyebrow">Design choices</span>
+    <h2>Why it's built this way</h2>
+    <div class="two">
+      <div class="card">
+        <h3>Two ways to receive messages</h3>
+        <p><b>Webhook:</b> Webex calls us the instant a message arrives. Needs a public URL, which ngrok provides from a laptop.</p>
+        <p><b>Polling:</b> we ask Webex every 10 seconds. Slightly slower, but it only makes outgoing requests, so it works on a company network where tunnels are blocked. It also catches up after downtime.</p>
+        <p class="muted">Rules, the bot, and summaries behave the same in both modes.</p>
+      </div>
+      <div class="card">
+        <h3>Our own MCP server, not Webex's</h3>
+        <p>Webex now hosts MCP servers, but they only wrap the Webex API. They can't filter in real time, don't know our rules or why a message was held, and need an org admin to enable them.</p>
+        <p>Our server exposes our own data: rules, statuses and reasons, and saved summaries. It's one small Python file that runs locally.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <span class="eyebrow">Status</span>
+    <h2>Where the POC is</h2>
+    <ol class="phases">
+      <li class="done"><b>Accounts, bot, integration, ngrok</b><span class="tag">done</span></li>
+      <li class="done"><b>Project setup and database</b><span class="tag">done</span></li>
+      <li class="done"><b>OAuth login with automatic token refresh</b><span class="tag">done</span></li>
+      <li class="built"><b>Listener: webhook and polling modes</b><span class="tag">built · verifying with real messages</span></li>
+      <li class="built"><b>Rules engine and Priority bot pings</b><span class="tag">built · 12 unit tests pass</span></li>
+      <li class="built"><b>MCP server: rules and message lookups</b><span class="tag">built · verifying in Claude Code</span></li>
+      <li class="built"><b>Summaries for any period</b><span class="tag">built · verifying</span></li>
+      <li><b>Demo polish</b><span class="tag">next</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <span class="eyebrow">Limits</span>
+    <h2>What it doesn't do</h2>
+    <ul>
+      <li>It can't stop Webex's own notifications. You mute your noisy spaces once in the Webex app; the bot's chat stays unmuted.</li>
+      <li>It only knows messages from after the listener first started. There's no history import.</li>
+      <li>In webhook mode, messages sent while the listener is off are missed. Polling mode catches up.</li>
+      <li>It's a POC on personal free Webex accounts, running on a laptop. Nothing here is production-hardened.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Built with Python, FastAPI, SQLite, the official MCP SDK, and the Webex REST API. Plan and details live in the repo under <code>docs/</code>.
+  </footer>
+</main>

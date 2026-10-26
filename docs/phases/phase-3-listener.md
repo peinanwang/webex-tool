@@ -23,47 +23,48 @@ Both modes call the same `process_message(message_id)` function, so everything a
 ## Action items
 
 ### Shared pipeline (both modes)
-- [ ] `listener/pipeline.py` → `process_message(message_id)`:
-  - [ ] Skip if the id is already in `messages` (dedupe; polling may see a message twice)
-  - [ ] Fetch the full message with A's token
-  - [ ] Skip if `personId == Priority bot` (avoid loops)
-  - [ ] If `personId == A`: store with `status='self'`, `reason='self'` and stop (no rules, no relay; kept so summaries show both sides)
-  - [ ] Fetch the room title/type (cache it in memory)
-  - [ ] Detect if A is mentioned (`mentionedPeople` contains A's personId)
-  - [ ] Insert into `messages` with `status='digest'`, `reason='default'`
-  - [ ] Print one line per message (`[digest] C in Team Chat: "…"`) so it's easy to watch during the demo
-- [ ] `listener/main.py` (FastAPI): `GET /health` returns `{"ok": true, "mode": "<mode>"}`
-- [ ] Lifespan reads `LISTENER_MODE` and starts the matching mode below
+- [x] `listener/pipeline.py` → `process_message(message_id, message=None)` (polling passes the full message to save a fetch); test with `python -m listener.pipeline`:
+  - [x] Skip if the id is already in `messages` (dedupe; polling may see a message twice)
+  - [x] Fetch the full message with A's token
+  - [x] Skip if `personId == Priority bot` (avoid loops)
+  - [x] If `personId == A`: store with `status='self'`, `reason='self'` and stop (no rules, no relay; kept so summaries show both sides)
+  - [x] Fetch the room title/type (cache it in memory)
+  - [x] Detect if A is mentioned (`mentionedPeople` contains A's personId)
+  - [x] Insert into `messages` with `status='digest'`, `reason='default'`
+  - [x] Print one line per message (`[digest] C in Team Chat: "…"`) so it's easy to watch during the demo
+- [x] `listener/main.py` (FastAPI): `GET /health` returns `{"ok": true, "mode": "<mode>"}`
+- [x] Lifespan reads `LISTENER_MODE` and starts the matching mode below
 
 ### Webhook mode
-- [ ] `POST /webhook`:
-  - [ ] Verify `X-Spark-Signature`; return 401 if it's wrong
-  - [ ] Read `data.id` and hand it to `process_message` (as a background task)
-  - [ ] Return 200 quickly (Webex retries slow or failed webhooks)
-- [ ] On startup: delete any existing webhooks named "webex-focus", then register a new one for `messages` / `created` pointing to `PUBLIC_URL/webhook` with `WEBHOOK_SECRET` (the free ngrok URL changes on every restart)
+- [x] `POST /webhook` (helpers in `listener/webhook.py`):
+  - [x] Verify `X-Spark-Signature`; return 401 if it's wrong
+  - [x] Read `data.id` and hand it to `process_message` (as a background task)
+  - [x] Return 200 quickly (Webex retries slow or failed webhooks)
+- [x] `PUBLIC_URL` optional: if empty, auto-detect the URL from the local ngrok agent (`127.0.0.1:4040/api/tunnels`)
+- [x] On startup: delete any existing webhooks named "webex-focus", then register a new one for `messages` / `created` pointing to `PUBLIC_URL/webhook` with `WEBHOOK_SECRET` (the free ngrok URL changes on every restart)
 
 ### Polling mode
-- [ ] `listener/poller.py`: background loop started from lifespan, every `POLL_INTERVAL` seconds:
-  - [ ] `GET /v1/rooms?sortBy=lastactivity&max=50`
-  - [ ] For each room with `lastActivity` newer than its cursor: `GET /v1/messages?roomId=…&max=50`
-  - [ ] Process messages newer than the cursor, oldest first, through `process_message`
-  - [ ] Update `poll_cursor:<roomId>` in `kv`
-  - [ ] First run: set cursors to "now" so old history isn't imported
-  - [ ] Catch and log errors, then keep looping (one bad call shouldn't stop polling)
-- [ ] On startup in polling mode: delete any "webex-focus" webhook so the two modes never run at the same time
+- [x] `listener/poller.py`: background loop started from lifespan, every `POLL_INTERVAL` seconds:
+  - [x] `GET /v1/rooms?sortBy=lastactivity&max=50`
+  - [x] For each room with `lastActivity` newer than its cursor: `GET /v1/messages?roomId=…&max=50`
+  - [x] Process messages newer than the cursor, oldest first, through `process_message`
+  - [x] Update `poll_cursor:<roomId>` in `kv`
+  - [x] First run: record `poll_started_at` = now and only take messages after it, so old history isn't imported (cursors persist, so restarts catch up)
+  - [x] Catch and log errors, then keep looping (one bad call shouldn't stop polling)
+- [x] On startup in polling mode: delete any "webex-focus" webhook so the two modes never run at the same time
 
-### Run notes (README)
-- [ ] Webhook mode: start `ngrok http 8000`, copy the URL into `PUBLIC_URL`, then `uvicorn listener.main:app --port 8000`
-- [ ] Polling mode: set `LISTENER_MODE=polling`, then `uvicorn listener.main:app --port 8000` (no ngrok)
-- [ ] Company network: set `HTTPS_PROXY` / `SSL_CERT_FILE` if needed
+### Run notes (in `docs/VERIFY.md`; README comes in Phase 7)
+- [x] Webhook mode: start `ngrok http 8000`, then (`PUBLIC_URL` can stay empty; it's auto-detected from ngrok) `uvicorn listener.main:app --port 8000`
+- [x] Polling mode: set `LISTENER_MODE=polling`, then `uvicorn listener.main:app --port 8000` (no ngrok)
+- [x] Company network: set `HTTPS_PROXY` / `SSL_CERT_FILE` if needed
 
 ## Checkpoint
 
 ### Webhook mode
-- [ ] `curl localhost:8000/health` shows `"mode": "webhook"`
-- [ ] Listener startup shows "webhook registered → https://…/webhook"
+- [x] `curl localhost:8000/health` shows `"mode": "webhook"`
+- [x] Listener startup shows "webhook registered → https://…/webhook"
 - [ ] B sends "hi" in the A↔B space, and a row appears in `messages` with the full text
-- [ ] `curl -X POST localhost:8000/webhook -d '{}'` gets 401 (signature check works)
+- [x] `curl -X POST localhost:8000/webhook -d '{}'` gets 401 (signature check works)
 
 ### Polling mode
 - [ ] `curl localhost:8000/health` shows `"mode": "polling"`, and ngrok is not running

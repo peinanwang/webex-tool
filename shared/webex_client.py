@@ -120,6 +120,10 @@ def get_message(message_id: str) -> dict:
     return user_request("GET", f"/messages/{message_id}")
 
 
+def get_person(person_id: str) -> dict:
+    return user_request("GET", f"/people/{person_id}")
+
+
 def get_room(room_id: str) -> dict:
     return user_request("GET", f"/rooms/{room_id}")
 
