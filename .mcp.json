@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "webex-focus": {
-      "command": "/Users/peinanwang/playground/webex-tool/.venv/bin/python",
-      "args": ["/Users/peinanwang/playground/webex-tool/mcp_server/server.py"]
-    }
-  }
-}

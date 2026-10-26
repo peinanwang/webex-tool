@@ -1,5 +1,7 @@
 # Phase 11 — Template editor for non-technical teammates
 
+**Status: built 2026-10-26** (automated tests pass). Hands-on checks: [VERIFY.md](../VERIFY.md).
+
 Since Phase 4, every response has come from a file in `templates/`. This phase lets a teammate edit those files from the UI, with a live preview and a safety check, so nobody needs VS Code or git to improve the wording.
 
 ## Learn first

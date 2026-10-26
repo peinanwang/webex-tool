@@ -11,10 +11,15 @@ so old history isn't imported.
 import asyncio
 
 from listener.pipeline import process_message
+from shared.log import log
 from shared import config
 from shared import webex_client as wx
 from shared.db import kv_get, kv_set
 from shared.timeutil import now_webex_utc
+
+# Shown in the UI's top bar ("polling · 1s ago"): when the last pass finished without an error.
+last_ok_at: str | None = None
+last_error: str | None = None
 
 
 def poll_once() -> int:
@@ -38,7 +43,7 @@ def poll_once() -> int:
             try:
                 process_message(msg["id"], msg)
             except Exception as exc:
-                print(f"[error] message {msg['id']}: {exc}", flush=True)
+                log(f"[error] message {msg['id']}: {exc}")
         if new:
             kv_set(f"poll_cursor:{room['id']}", new[0]["created"])
             found += len(new)
@@ -47,10 +52,13 @@ def poll_once() -> int:
 
 async def poll_forever() -> None:
     """Background loop started by the listener's lifespan in polling mode."""
+    global last_ok_at, last_error
     while True:
         try:
             # poll_once makes blocking HTTP calls; run it in a thread so the web server stays responsive.
             await asyncio.to_thread(poll_once)
+            last_ok_at, last_error = now_webex_utc(), None
         except Exception as exc:
-            print(f"[error] poll failed: {exc}", flush=True)  # keep looping; next pass may work
+            last_error = str(exc)
+            log(f"[error] poll failed: {exc}")  # keep looping; next pass may work
         await asyncio.sleep(config.POLL_INTERVAL)

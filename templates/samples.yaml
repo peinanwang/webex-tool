@@ -1,0 +1,250 @@
+# Example values for every template. The Templates page uses them for the live preview, and the
+# automatic tests render every template with them, so a typo in a placeholder is caught right away.
+# If you add a placeholder to a template, add an example value here too.
+
+notify/assistant_post.md:
+  sender: Bob Chen
+  sender_email: bob@example.com
+  space: Release Team
+  is_direct: false
+  mentioned_me: true
+  text: "Can you approve the release PR by 3pm?\nIt's blocking QA."
+  reason: "rule#2 sender=bob@example.com"
+  time: "14:05"
+  link: http://localhost:8000/#/triage?msg=abc
+
+notify/desktop_title.txt:
+  sender: Bob Chen
+  space: Release Team
+  is_direct: false
+  mentioned_me: true
+
+notify/desktop_body.txt:
+  text: Can you approve the release PR by 3pm?
+  reason: "rule#2 sender=bob@example.com"
+  mentioned_me: true
+
+chat/help.md:
+  llm_ready: true
+
+chat/focus_status.md:
+  "on": true
+  since: "13:00"
+  duration: 1h 12m
+  counts: {high: 2, regular: 14, self: 3}
+
+chat/focus_on.md:
+  already: false
+  since: "13:00"
+
+chat/focus_off.md:
+  already: false
+  session_period: "Mon Oct 26, 13:00–15:10"
+
+chat/focus_off_summary.md:
+  summary: "## While you were focused · Mon Oct 26, 13:00–15:10\n2 high priority · 14 regular\n\n**The release moved to Friday.**"
+  summary_id: 7
+  link: http://localhost:8000/#/summaries?id=7
+
+chat/eod_posted.md:
+  day: Mon Oct 26
+  summary: "## End of day · Mon Oct 26\n5 high priority · 37 regular\n\n**The release moved to Friday.**"
+  outbox_path: data/outbox/2026-10-26-end-of-day-8.eml
+
+chat/rule_phrase.md:
+  rule: {id: 2, category: high, match_type: sender, value: bob@example.com, enabled: true}
+
+chat/rules_list.md:
+  rules:
+    - {id: 1, category: high, match_type: mention, value: "", enabled: true}
+    - {id: 2, category: high, match_type: sender, value: bob@example.com, enabled: true}
+    - {id: 3, category: high, match_type: keyword, value: urgent, enabled: false}
+    - {id: 4, category: regular, match_type: space, value: Random, enabled: true}
+    - {id: 5, category: high, match_type: topic, value: the Q3 launch, enabled: true}
+
+chat/rule_added.md:
+  rule: {id: 6, category: high, match_type: sender, value: dana@example.com, enabled: true}
+
+chat/rule_toggled.md:
+  rule: {id: 3, category: high, match_type: keyword, value: urgent, enabled: false}
+
+chat/rule_delete_confirm.md:
+  rule: {id: 4, category: regular, match_type: space, value: Random, enabled: true}
+
+chat/rule_removed.md:
+  rule: {id: 4, category: regular, match_type: space, value: Random, enabled: true}
+
+chat/rule_test.md:
+  category: high
+  reason: "rule#3 keyword=urgent"
+  decided_by: rule
+  ai_would_decide: false
+  focus_on: false
+  text: "urgent: server down"
+  sender: carol@example.com
+  space: Team Chat
+
+chat/contacts.md:
+  query: bob
+  people:
+    - {name: Bob Chen, email: bob@example.com, messages: 12}
+
+chat/spaces.md:
+  query: rand
+  spaces:
+    - {title: Random, type: group, messages: 40}
+
+chat/messages_list.md:
+  period: Mon Oct 26
+  count: 2
+  messages:
+    - {time: "09:14", sender: Carol Diaz, space: Team Chat, is_direct: false, text: "anyone for lunch?", category: regular, reason: default}
+    - {time: "10:40", sender: Carol Diaz, space: Carol Diaz, is_direct: true, text: the deck is ready, category: high, reason: "ai: shares a deliverable you asked for"}
+
+chat/triage_stats.md:
+  period: Mon Oct 26
+  total: 42
+  high: 5
+  regular: 37
+  needs_review: 3
+  overall: {reviewed: 12, correct: 11, accuracy: 92}
+  rules: {reviewed: 6, correct: 6, accuracy: 100}
+  ai: {reviewed: 6, correct: 5, accuracy: 83}
+  defaults: {reviewed: 0, correct: 0, accuracy: null}
+
+chat/feedback_saved.md:
+  message: {sender: Carol Diaz, text: prod latency is spiking again, category: regular, feedback: should_be_high}
+
+chat/summaries_list.md:
+  summaries:
+    - {id: 8, kind_label: End of day, period: Mon Oct 26, scope: all, delivered_at: "2026-10-27T06:59:00.000Z"}
+    - {id: 7, kind_label: While you were focused, period: "Mon Oct 26, 13:00–15:10", scope: held, delivered_at: null}
+
+chat/email_sent.md:
+  summary_id: 8
+  to: a@example.com
+  outbox_path: data/outbox/2026-10-26-end-of-day-8.eml
+
+chat/focus_profile.md:
+  profile: Outages and anything from my manager are urgent; social chat isn't.
+  updated: false
+  ai_triage_on: true
+  keywords:
+    - {id: 2, value: outage, category: high, enabled: true}
+    - {id: 3, value: urgent, category: high, enabled: false}
+  topics:
+    - {id: 5, value: the Q3 launch, category: high, enabled: true}
+  corrections: 7
+
+chat/answer.md:
+  answer: Carol sent 4 messages today, mostly about lunch plans.
+
+chat/error.md:
+  message: There's no rule #9.
+
+chat/llm_unavailable.md:
+  reason: no OpenAI API key is set up
+
+chat/not_understood.md: {}
+
+chat/unknown_command.md:
+  command: /dance
+
+summary/summary.md:
+  kind: end_of_day
+  kind_label: End of day
+  period: Mon Oct 26
+  scope: all
+  counts: {high: 5, regular: 37, self: 9}
+  headline: The release moved to Friday, and Bob needs your PR approval by 3pm.
+  highlights:
+    - Release date moved to Friday (Carol, Release Team).
+    - Prod latency alert was resolved by the on-call team.
+  action_items:
+    - {what: Approve the release PR, who: Bob Chen, due: 3pm today}
+  by_space:
+    - {space: Release Team, points: [Release moved to Friday., QA is blocked on the PR.]}
+    - {space: Random, points: [Cake in the kitchen.]}
+  truncated: false
+  data_starts_at: null
+  ai_written: true
+
+summary/empty.md:
+  kind_label: While you were focused
+  period: "Mon Oct 26, 13:00–13:20"
+  scope: held
+  counts: {high: 0, regular: 0, self: 0}
+  data_starts_at: null
+  truncated: false
+
+summary/email_subject.txt:
+  kind_label: End of day
+  period: Mon Oct 26
+
+summary/email_body.html:
+  kind_label: End of day
+  period: Mon Oct 26
+  summary_html: "<h2>End of day</h2><p><strong>The release moved to Friday.</strong></p>"
+  summary_markdown: "## End of day\n**The release moved to Friday.**"
+  ui_link: http://localhost:8000/#/summaries?id=8
+
+summary/email_body.txt:
+  summary_markdown: "## End of day\n**The release moved to Friday.**"
+  ui_link: http://localhost:8000/#/summaries?id=8
+  kind_label: End of day
+  period: Mon Oct 26
+
+prompts/assistant.md:
+  user_name: Alex Kim
+  now: Monday 2026-10-26 14:05
+  today: "2026-10-26"
+  timezone: PDT
+  focus_on: true
+
+prompts/summarize.md:
+  scope: held
+  kind: focus_session
+  period: "Mon Oct 26, 13:00–15:10"
+
+prompts/triage.md:
+  profile: Outages and anything from my manager are urgent; social chat isn't.
+  examples:
+    - {sender: Carol Diaz, space: Team Chat, text: prod latency is spiking again, label: high}
+    - {sender: Carol Diaz, space: Random, text: cake in the kitchen, label: regular}
+  topics:
+    - {id: 5, topic: the Q3 launch, category: high}
+
+chat/space_post.md:
+  body: "✅ Added rule **#1**: messages from **bob@example.com** → 🔔 **High priority**."
+  kind: reply
+  assistant_name: Webex Assistant
+
+chat/profile_explained.md:
+  urgent: [Production outages and incidents, Direct requests with a deadline today, Anything from bob@example.com]
+  can_wait: [Social chat and lunch plans, FYIs and announcements]
+  learned: [Questions from Carol in Team Chat can usually wait]
+  profile: Outages and anything from my manager are urgent; social chat isn't.
+  ai_written: true
+
+chat/watch_list.md:
+  keywords:
+    - {id: 2, value: outage, category: high, enabled: true}
+    - {id: 4, value: lunch, category: regular, enabled: false}
+  topics:
+    - {id: 5, value: the Q3 launch, category: high, enabled: true}
+
+chat/watch_added.md:
+  rule: {id: 6, match_type: keyword, value: outage, category: high, enabled: true}
+  already: false
+
+chat/watch_removed.md:
+  rules:
+    - {id: 6, match_type: keyword, value: outage}
+
+prompts/explain_profile.md:
+  profile: Outages and anything from my manager are urgent; social chat isn't.
+  rules:
+    - {category: high, match_type: sender, value: bob@example.com}
+    - {category: high, match_type: mention, value: ""}
+  examples:
+    - {sender: Carol Diaz, space: Team Chat, text: "anyone up for lunch?", label: regular}

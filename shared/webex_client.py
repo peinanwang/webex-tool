@@ -1,28 +1,35 @@
 """Webex REST calls.
 
-Two identities:
-- A (the filtered user): OAuth access token from the kv table, refreshed automatically.
-  Used for reading messages/rooms and managing webhooks.
-- Priority bot: long-lived PRIORITY_BOT_TOKEN from .env. Used only to send A notifications.
-  Never read with the bot token: in group spaces a bot only sees messages that @mention it.
+One identity: A (the filtered user). The OAuth access token (from the integration login, stored in
+the kv table) is refreshed automatically. It's used for everything: reading messages and rooms,
+managing webhooks, and posting into A's Webex Assistant space.
 
 httpx honors HTTPS_PROXY and SSL_CERT_FILE from the environment, which is all the
 company network setup needs.
 
-Run `python -m shared.webex_client` to check both identities.
-Run `python -m shared.webex_client send-test` to also have the bot message A.
+Run `python -m shared.webex_client` to check the login.
 """
 
-import sys
+import threading
 import time
 
 import httpx
 
 from shared import config
-from shared.db import kv_get, kv_set
+from shared.db import add_app_post, kv_get, kv_set
 
 API = "https://webexapis.com/v1"
-SCOPES = "spark:messages_read spark:messages_write spark:rooms_read spark:people_read spark:kms"
+# Set in .env (WEBEX_SCOPES). Every scope here must also be ticked on the integration page; re-run
+# `python -m scripts.login` after changes.
+SCOPES = config.WEBEX_SCOPES
+
+# Webex rejects message text over ~7439 bytes; we cut long posts (full text stays in the UI).
+MAX_POST_CHARS = 6500
+
+# Held while posting as A and recording the new id in app_posts. The pipeline takes the same lock
+# before checking app_posts, so a poll that lands between "posted" and "recorded" can't mistake our
+# own post for A typing.
+post_lock = threading.Lock()
 
 # Refresh a bit before the real expiry so a call never starts with an almost-dead token.
 REFRESH_MARGIN_SECONDS = 5 * 60
@@ -105,11 +112,6 @@ def user_request(method: str, path: str, **kwargs):
     return _result(resp)
 
 
-def bot_request(method: str, path: str, **kwargs):
-    """Call the API as the Priority bot."""
-    return _result(_send(method, path, config.require("PRIORITY_BOT_TOKEN"), **kwargs))
-
-
 # --- A: reading ---
 
 def me() -> dict:
@@ -138,6 +140,31 @@ def list_messages(room_id: str, max_items: int = 50) -> list[dict]:
     return user_request("GET", "/messages", params={"roomId": room_id, "max": max_items})["items"]
 
 
+def list_group_rooms(max_items: int = 1000) -> list[dict]:
+    return user_request("GET", "/rooms", params={"type": "group", "max": max_items})["items"]
+
+
+def search_people(name_or_email: str, max_items: int = 5) -> list[dict]:
+    """Webex directory lookup by email (exact) or display name (prefix)."""
+    key = "email" if "@" in name_or_email else "displayName"
+    return user_request("GET", "/people", params={key: name_or_email, "max": max_items})["items"]
+
+
+# --- A: posting (Webex Assistant space) ---
+
+def user_send(markdown: str, room_id: str) -> dict:
+    """Post as A into a room and remember the id, so the pipeline skips it when polling sees it.
+
+    Messages A sends never trigger a notification for A; that's why alerts also use the desktop.
+    """
+    if len(markdown) > MAX_POST_CHARS:
+        markdown = markdown[:MAX_POST_CHARS] + "\n\n_… cut here; the full text is in the Webex Focus UI._"
+    with post_lock:
+        message = user_request("POST", "/messages", json={"roomId": room_id, "markdown": markdown})
+        add_app_post(message["id"])
+    return message
+
+
 # --- A: webhooks ---
 
 def list_webhooks() -> list[dict]:
@@ -156,28 +183,7 @@ def delete_webhook(webhook_id: str) -> None:
     user_request("DELETE", f"/webhooks/{webhook_id}")
 
 
-# --- Priority bot ---
-
-def bot_me() -> dict:
-    return bot_request("GET", "/people/me")
-
-
-def bot_send(markdown: str, to_person_email: str | None = None, room_id: str | None = None) -> dict:
-    """Bot posts a message, either 1:1 to a person (by email) or into a room."""
-    body = {"markdown": markdown}
-    if room_id:
-        body["roomId"] = room_id
-    else:
-        body["toPersonEmail"] = to_person_email
-    return bot_request("POST", "/messages", json=body)
-
-
 if __name__ == "__main__":
     user = me()
     left = int(kv_get("access_token_expires_at", "0")) - int(time.time())
-    print(f"A:   {user['displayName']} <{user['emails'][0]}>  (access token valid for {left // 3600}h)")
-    bot = bot_me()
-    print(f"Bot: {bot['displayName']} <{bot['emails'][0]}>  (type={bot['type']})")
-    if "send-test" in sys.argv:
-        bot_send("🔔 Test from **Priority**: the bot can reach you.", to_person_email=user["emails"][0])
-        print("Test message sent to A.")
+    print(f"Logged in as {user['displayName']} <{user['emails'][0]}>  (access token valid for {left // 3600}h)")

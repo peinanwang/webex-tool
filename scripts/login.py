@@ -5,7 +5,7 @@ Run it while the listener is NOT running (both use port 8000):
     python -m scripts.login
 
 It opens the Webex consent page, catches the redirect on localhost, stores A's tokens
-in the kv table, and records A's and the bot's personIds for the listener.
+in the kv table, and records A's personId for the listener.
 Run it again any time you change scopes or the refresh token expires (~90 days).
 
 If the browser can't reach the script (redirect page shows "can't connect"), use:
@@ -23,7 +23,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 
 from shared import config
 from shared.db import init_db, kv_set
-from shared.webex_client import SCOPES, bot_me, exchange_code, me
+from shared.webex_client import SCOPES, exchange_code, me
 
 AUTHORIZE_URL = "https://webexapis.com/v1/authorize"
 
@@ -67,6 +67,7 @@ def main() -> None:
     })
 
     print("Opening the Webex login page. Log in as A, then click Accept on the permissions page.")
+    print(f"Asking for: {SCOPES}")
     print(f"If the browser doesn't open, visit:\n{url}\n")
 
     if "--paste" in sys.argv:
@@ -88,7 +89,12 @@ def main() -> None:
     if not result:
         raise SystemExit("No code found in the pasted URL.")
     if "error" in result:
-        raise SystemExit(f"Login failed: {result['error']} {result.get('error_description', '')}")
+        hint = ""
+        if result["error"] == "invalid_scope":
+            hint = (f"\nThis login asked for: {SCOPES}\n"
+                    "Every one of these must be ticked on your integration (developer.webex.com → My Webex Apps).\n"
+                    "Easiest: tick spark:all there, Save, and put WEBEX_SCOPES=spark:all spark:kms in .env.")
+        raise SystemExit(f"Login failed: {result['error']} {result.get('error_description', '')}{hint}")
     if result.get("state") != state:
         raise SystemExit("Login failed: state mismatch (callback didn't come from this login).")
 
@@ -99,12 +105,7 @@ def main() -> None:
     kv_set("my_email", user["emails"][0])
     kv_set("my_display_name", user["displayName"])
 
-    bot = bot_me()
-    kv_set("bot_person_id", bot["id"])
-    kv_set("bot_email", bot["emails"][0])
-
     print(f"Logged in as {user['displayName']} <{user['emails'][0]}>")
-    print(f"Priority bot: {bot['displayName']} <{bot['emails'][0]}>")
     print("Tokens saved. Next: python -m shared.webex_client")
 
 

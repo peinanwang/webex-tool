@@ -1,6 +1,8 @@
 # Phase 6 — AI assistant in the Webex space
 
-A chats with our own agent in the **Focus Assistant** space. The agent uses the Phase 5 tools through the **OpenAI API**. (The hackathon had a chat prototype with no tools. Its code isn't available, so this is a fresh build.)
+**Status: built 2026-10-26** (automated tests pass). Hands-on checks: [VERIFY.md](../VERIFY.md).
+
+A chats with our own agent in the **Webex Assistant** space. The agent uses the Phase 5 tools through the **OpenAI API**. (The hackathon had a chat prototype with no tools. Its code isn't available, so this is a fresh build.)
 
 ## Learn first
 - **Tool-calling loop**: send the model (system prompt + recent chat + tool list). If it asks for a tool, run it and send the result back, then repeat until it answers in text. We cap the loop at `AGENT_MAX_STEPS` (5) so a confused model can't spin forever.
@@ -48,7 +50,7 @@ A chats with our own agent in the **Focus Assistant** space. The agent uses the 
 
 ## Checkpoint
 - [ ] `python -m shared.llm "say hi"` works
-- [ ] In the Focus Assistant space: "what are my rules?" → the `rules_list` template text
+- [ ] In the Webex Assistant space: "what are my rules?" → the `rules_list` template text
 - [ ] "Notify me when Bob writes" → `find_contacts` → rule added, confirmed with `rule_added` text
 - [ ] "What did C say today?" → a correct answer from the DB
 - [ ] "Delete rule 3" → it asks first, and deletes only after "yes"

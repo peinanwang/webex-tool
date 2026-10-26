@@ -4,3 +4,9 @@ httpx
 mcp
 python-dotenv
 pytest
+openai
+jinja2
+pyyaml
+apscheduler
+markdown
+win11toast; sys_platform == "win32"

@@ -1,0 +1,7 @@
+{#
+  Subject line of the summary email.
+  Placeholders:
+    kind_label: Summary / While you were focused / End of day
+    period: e.g. Mon Oct 26
+#}
+Webex Focus · {{ kind_label }} · {{ period }}

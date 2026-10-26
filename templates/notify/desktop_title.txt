@@ -1,0 +1,9 @@
+{#
+  Title line of the desktop notification for a High priority message. Keep it short.
+  Placeholders:
+    sender: display name of the person who wrote
+    space: space title
+    is_direct: true for a 1:1 chat
+    mentioned_me: true if the message @mentions you
+#}
+🔔 {{ sender }}{% if not is_direct %} · {{ space }}{% endif %}

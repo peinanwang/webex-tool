@@ -1,6 +1,6 @@
 # What the AI assistant can do
 
-A talks to the assistant in plain language, in the Webex **Focus Assistant** space or the UI's **Assistant** tab (same conversation). The assistant is an LLM (OpenAI API; later the company's OpenAI-compatible gateway) with the **tools** below. A tool is a Python function the model can ask us to run. The model picks the tool and fills in its arguments, we run it, and the model writes the answer from the result.
+A talks to the assistant in plain language, in the Webex **Webex Assistant** space or the UI's **Assistant** tab (same conversation). The assistant is an LLM (OpenAI API; later the company's OpenAI-compatible gateway) with the **tools** below. A tool is a Python function the model can ask us to run. The model picks the tool and fills in its arguments, we run it, and the model writes the answer from the result.
 
 The same tools are exposed to Claude Code / Copilot through the MCP server. That gives us a free test bench before the in-app agent exists (Phase 5), and power users get the same features from their IDE.
 
@@ -46,29 +46,38 @@ Code: `shared/tools.py` (registry), `shared/agent.py` (chat loop), `mcp_server/s
 | `get_summary(summary_id)` | One saved summary | "Show Tuesday's end-of-day summary" |
 | `email_summary(summary_id)` ✏️ | "Email" a saved summary to A. For now this writes an `.eml` + `.html` to `data/outbox/` (mock); real delivery comes later | "Email me that" |
 
-### AI triage settings (Phase 10)
+### What I pay attention to (focus profile, keywords, topics)
 
 | Tool | What it does | A might say |
 |---|---|---|
-| `get_focus_profile()` | A's description of what matters, used by AI triage | "What do you think is important to me?" |
-| `set_focus_profile(text)` ✏️ | Replace that description | "Outages and anything from my manager are urgent; social chat isn't" |
+| `get_focus_profile()` | The focus profile text, watched keywords and topics, and how many corrections the AI has learned from | "What am I paying attention to?" |
+| `set_focus_profile(text)` ✏️ | Replace the focus profile (what's urgent, in A's words; used by AI triage) | "Outages and anything from my manager are urgent; social chat isn't" |
+| `explain_focus_profile()` | The **AI's own reading**: what it will interrupt A for, what can wait, and what it learned from A's corrections | "What do you think is important to me?" |
+| `list_watches()` | Watched keywords (exact text) and topics (judged by AI) | "What words am I watching?" |
+| `watch(text, kind)` ✏️ | Always notify A about a keyword (`kind="keyword"`, exact text) or a subject (`kind="topic"`, AI-judged). Same as a High keyword/topic rule | "Watch for the word outage" · "Keep me posted on the Q3 launch" |
+| `unwatch(text)` ✏️ | Stop watching that keyword or topic | "Stop watching outage" |
 
 ## Slash commands (no LLM needed)
 
-These run instantly and deterministically, even if the LLM is down or out of quota. That makes them handy for the demo and for people who prefer commands.
+These run instantly and deterministically, even if the LLM is down or out of quota. That makes them handy for the demo and for people who prefer commands. Command names ignore case. The text after a command is used exactly as typed (so `/profile …` saves your words verbatim). Defined in `SLASH_COMMANDS` in `shared/agent.py`.
 
 | Command | Same as |
 |---|---|
 | `/help` | Lists what the assistant can do (`templates/chat/help.md`) |
-| `/status` | `get_focus_status()` |
-| `/focus on` · `/focus off` | `set_focus_mode(...)` |
+| `/mode` · `/mode on` · `/mode off` | `get_focus_status()` · `set_focus_mode(...)` (`/status` and `/focus on\|off` still work) |
+| `/profile` | `get_focus_profile()`: profile, keywords, topics, corrections |
+| `/profile <your words>` | `set_focus_profile(<your words>)`, saved word for word |
+| `/profile explain` | `explain_focus_profile()` (needs the AI; without it, shows the profile as written) |
+| `/watch` · `/watch <word>` · `/unwatch <word>` | `list_watches()` · `watch(word)` · `unwatch(word)` |
+| `/topic <subject>` | `watch(subject, kind="topic")` |
 | `/rules` | `list_rules()` |
-| `/summary` · `/summary focus` | `summarize(today, held)` · summary of the current or last focus session |
+| `/rule off N` · `/rule on N` · `/rule delete N` | `set_rule_enabled(N, ...)` · `delete_rule(N, confirm=true)`. Explicit, so there's no "are you sure?" |
+| `/summary` · `/summary all` · `/summary focus` | `summarize(today, held)` · `summarize(today, all)` · summary of the current or last focus session |
 
 ## How a chat turn works
 
 ```
-A types in the Focus Assistant space ──► poller sees A's message in that space
+A types in the Webex Assistant space ──► poller sees A's message in that space
                                           │ (not one we posted ourselves: app_posts check)
                                           ▼
                                starts with "/"? ── yes ──► run tool ─► render template ─┐
@@ -90,11 +99,11 @@ Every response is written from a template in `templates/` (see [Phase 4](phases/
 1. **Tool results.** Each tool returns `{"data": ..., "display": "<rendered template>"}`. The system prompt tells the model to reply with `display` as-is when it answers the request (for example, the rules list or "rule added"). So rule lists, confirmations, and errors look the same every time.
 2. **Free-form answers** ("what did C say?") are written by the model, guided by the tone and persona in `templates/prompts/assistant.md`, and wrapped by `templates/chat/answer.md` (for example, to add a footer).
 3. **Summaries.** The model returns structured JSON (headline, highlights, per-space points, action items). `templates/summary/summary.md` controls the layout. The email uses `summary/email_subject.txt`, `summary/email_body.html`, and `summary/email_body.txt`.
-4. **Notifications.** `templates/notify/assistant_post.md` (the post in the Focus Assistant space) and `notify/desktop_title.txt` / `desktop_body.txt` (the desktop notification).
+4. **Notifications.** `templates/notify/assistant_post.md` (the post in the Webex Assistant space) and `notify/desktop_title.txt` / `desktop_body.txt` (the desktop notification).
 
 ## What the assistant will not do (v2)
 
 - Send or reply to messages in other spaces on A's behalf (stretch goal: drafts only)
 - Read Webex history from before the listener first started
 - Mute or unmute Webex spaces, or set Do Not Disturb (no Webex API for this; A does it in the Webex client)
-- Delete messages, or change anything in Webex besides posting in the Focus Assistant space
+- Delete messages, or change anything in Webex besides posting in the Webex Assistant space

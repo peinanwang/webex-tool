@@ -1,5 +1,7 @@
 # Phase 5 — One tool registry (shared by MCP and the agent)
 
+**Status: built 2026-10-26** (automated tests pass). Hands-on checks: [VERIFY.md](../VERIFY.md).
+
 Move the tools out of `mcp_server/server.py` into `shared/tools.py`, update them for v2, and add the new ones from [ai-tools.md](../ai-tools.md). After this phase, everything the assistant will be able to do already works from Claude Code. That is our test bench before we build our own agent.
 
 ## Learn first

@@ -1,5 +1,7 @@
 # Phase 8 — Web UI, part 1: shell, Triage, Rules
 
+**Status: built 2026-10-26** (automated tests pass). Hands-on checks: [VERIFY.md](../VERIFY.md).
+
 The first two "review" tabs, plus the always-visible focus switch. Design and wireframes are in [ui.md](../ui.md).
 
 ## Learn first

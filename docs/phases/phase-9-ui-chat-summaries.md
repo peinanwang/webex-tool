@@ -1,6 +1,8 @@
 # Phase 9 — Web UI, part 2: Assistant chat & Summaries (live)
 
-The Webex-style chat tab (the same thread as the Focus Assistant space), the summary archive, and live updates everywhere.
+**Status: built 2026-10-26** (automated tests pass). Hands-on checks: [VERIFY.md](../VERIFY.md).
+
+The Webex-style chat tab (the same thread as the Webex Assistant space), the summary archive, and live updates everywhere.
 
 ## Learn first
 - **Server-Sent Events (SSE)**: one long-lived HTTP response that the server keeps writing small events into (`event: chat_turn`, `data: {...}`). The browser's built-in `EventSource` receives them. It's simpler than WebSockets because data only flows server → browser, and the browser sends its actions with normal POSTs.

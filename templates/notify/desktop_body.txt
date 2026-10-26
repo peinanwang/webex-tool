@@ -1,0 +1,8 @@
+{#
+  Body of the desktop notification (cut to about 200 characters).
+  Placeholders:
+    text: the message text
+    reason: why it's High priority
+    mentioned_me: true if the message @mentions you
+#}
+{% if mentioned_me %}@you: {% endif %}{{ text }}

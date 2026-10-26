@@ -1,5 +1,7 @@
 # Phase 10 — AI live triage
 
+**Status: built 2026-10-26** (automated tests pass). Hands-on checks: [VERIFY.md](../VERIFY.md).
+
 Rules handle the known cases (Bob, "urgent", @mentions). The AI handles the rest: a message no rule matched is classified by the LLM using A's **focus profile** and A's past corrections. The Triage tab (Phase 8) is how we measure whether it helps.
 
 ## Learn first

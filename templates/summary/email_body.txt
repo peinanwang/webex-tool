@@ -1,0 +1,11 @@
+{#
+  Plain-text version of the summary email (for mail apps that don't show HTML).
+  Placeholders:
+    summary_markdown: the summary text
+    ui_link: opens the summary in the Webex Focus web page
+    kind_label: Summary / While you were focused / End of day
+    period: e.g. Mon Oct 26
+#}
+{{ summary_markdown }}
+
+Open it in Webex Focus: {{ ui_link }}

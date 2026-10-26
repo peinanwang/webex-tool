@@ -12,3 +12,11 @@ __pycache__/
 
 # OS / editor
 .DS_Store
+
+# Template backups made by the UI's Templates page (for "Reset to default")
+templates/_defaults/
+
+# UI build output and dependencies
+ui/node_modules/
+ui/dist/
+ui/*.tsbuildinfo

@@ -1,10 +1,10 @@
 # Webex Focus
 
-POC (started at a company hackathon): keep Webex quiet while the user focuses. Every message is triaged into **High priority** (notify now) or **Regular** (held for a summary). The user talks to an **AI assistant** in a private Webex "Focus Assistant" space, or in a local **web UI**, to get summaries, check and change rules, and turn focus mode on and off.
+POC (started at a company hackathon): keep Webex quiet while the user focuses. Every message is triaged into **High priority** (notify now) or **Regular** (held for a summary). The user talks to an **AI assistant** in a private Webex "Webex Assistant" space, or in a local **web UI**, to get summaries, check and change rules, and turn focus mode on and off.
 
 Full phased plan: @docs/PLAN.md. AI tool catalog: `docs/ai-tools.md`. UI design: `docs/ui.md`. Original requirements: `docs/new_requirements.md`.
 
-**Migration status:** the docs describe v2. The code is still v1 (statuses `notify`/`digest`/`ignore`, bot relay, tools in `mcp_server/server.py`) until each v2 phase lands. Check the phase checkboxes in PLAN.md before assuming something exists.
+**Status:** v2 is built (Phases 3–11; see PLAN.md). Start everything with `python -m listener` (http://localhost:8000). User-level checks: `docs/VERIFY.md`. Tests: `pytest` (no Webex/OpenAI needed; tests use a temp DB, never `data/focus.db`).
 
 ## Project context
 
@@ -30,31 +30,31 @@ I'm new to FastAPI, MCP, webhooks, LLM tool calling, React, and SSE (comfortable
 
 - `listener/` — the always-on app (FastAPI). Finds new messages (`LISTENER_MODE`: `polling` default, `webhook` for home), and every message goes through one `process_message()`:
   - skip ids in `app_posts` (messages we posted ourselves)
-  - A's message in the Focus Assistant space → the agent (`listener/assistant.py`)
+  - A's message in the Webex Assistant space → the agent (`listener/assistant.py`)
   - A's message elsewhere → store as `self`
   - everything else → triage → store → notify if `high` **and** focus is on
   - Also hosts `api.py` (JSON for the UI), `events.py` (SSE), `scheduler.py` (23:59 summary), and serves `ui/dist`.
 - `mcp_server/` — MCP over stdio for Claude Code / Copilot. A thin adapter that registers every tool from `shared/tools.py`. Never `print()` there — stdout is the MCP channel.
-- `shared/` — `db.py`, `webex_client.py`, `rules.py` (pure), `focus.py`, `notifier.py`, `templates.py`, `tools.py` (the one tool registry), `llm.py` (the only file that imports `openai`), `agent.py`, `summary.py`, `emailer.py` (outbox mock), `desktop_notify.py`, `triage_ai.py`.
+- `shared/` — `db.py`, `webex_client.py`, `rules.py` (pure), `focus.py`, `notifier.py`, `templates.py`, `tools.py` (the one tool registry), `llm.py` (the only file that imports `openai`), `agent.py`, `summary.py`, `emailer.py` (outbox mock), `desktop_notify.py`, `triage_ai.py`, `assistant_space.py`, `events.py` (SSE bus), `log.py` (stderr logging).
 - `templates/` — Jinja2 files for every response (`notify/`, `chat/`, `summary/`) and every LLM prompt (`prompts/`), plus `samples.yaml` and a README for non-technical editors.
 - `ui/` — React + Vite + TypeScript + Tailwind. Tabs: Assistant, Triage, Rules, Summaries, Templates.
-- `scripts/` — `login.py`, `seed_rules.py`, `setup_assistant_space.py`, `eval_triage.py`, `reset_demo.py`.
+- `scripts/` — `login.py`, `seed_rules.py`, `reset_demo.py`, `setup_assistant_space.py`, `run_eod.py`, `eval_triage.py`, `eval_assistant.py`.
 - `data/focus.db` (SQLite, WAL mode). `docs/` — plan, phases, design notes. `docs/archive/v1/` — superseded v1 phases.
 
 ## Stack
 
-Python 3.11+, FastAPI, uvicorn, httpx, official `mcp` SDK **v2** (`from mcp.server.mcpserver import MCPServer` — v1's `FastMCP` was renamed; same `@mcp.tool()` / `@mcp.prompt()` decorators), SQLite, Jinja2 (sandboxed), `openai` SDK (Chat Completions + `tools`; `OPENAI_BASE_URL` configurable), APScheduler, desktop notifications (`terminal-notifier` / `osascript` on macOS, `win11toast` on Windows), stdlib `email` for the outbox. Frontend: React + Vite + TS + Tailwind, SSE for live updates. ngrok only for webhook mode at home.
+Python 3.11+, FastAPI, uvicorn, httpx, official `mcp` SDK **v2** (`from mcp.server.mcpserver import MCPServer` — v1's `FastMCP` was renamed; same `@mcp.tool()` / `@mcp.prompt()` decorators), SQLite, Jinja2 (sandboxed), `openai` SDK (Chat Completions + `tools`; `OPENAI_BASE_URL` configurable), APScheduler, desktop notifications (`osascript` on macOS, the chosen mode; `win11toast` on Windows; terminal-notifier optional, blocked by recent macOS), stdlib `email` for the outbox. Frontend: React + Vite + TS + Tailwind, SSE for live updates. ngrok only for webhook mode at home.
 
 ## Webex facts (don't re-discover these)
 
 - No API can block delivery, suppress a push notification, or mute a space. The user mutes spaces or uses DND in the Webex client.
-- **Company network: the Priority bot is blocked**, and ngrok/webhooks can't reach the laptop → polling + integration only.
-- **Integration posts are sent as A, and Webex never notifies you about your own messages.** Alerts therefore go to the Focus Assistant space (the record) **plus a desktop notification** (the real alert). The bot channel is optional, for home use.
+- **No bot.** A bot is blocked on the company network, so the project has no bot code: everything goes through A's integration login, and ngrok/webhooks can't reach the laptop → polling.
+- **Integration posts are sent as A, and Webex never notifies you about your own messages.** Alerts therefore go to the Webex Assistant space (the record) **plus a desktop notification** (the real alert). The bot channel is optional, for home use.
 - Every message we post as A is recorded in `app_posts`. The pipeline skips those ids, otherwise polling would treat our replies as A's chat input (loop).
-- Creating the Focus Assistant space needs the `spark:rooms_write` scope (re-login after adding it).
+- The Webex Assistant space is **created by A by hand** (only A in it); the server finds it by title (`ASSISTANT_SPACE_TITLE`) and never creates spaces. Everything posted there is sent as A, so every server post is wrapped by `templates/chat/space_post.md` (a "🤖 **Webex Assistant**" header) to tell it apart from A's own messages. A's own messages carry no header.
 - Webhook payloads contain IDs only → always `GET /v1/messages/{id}` with the user's token for text.
-- Webhook registered with A's OAuth token fires for all spaces A is in. Bots only see @mentions in group spaces, so never read with the bot token.
-- Messages sent by the Priority bot: skip entirely. Messages sent by A outside the assistant space: store with `category='self'`, `reason='self'` — never triage or notify them; they exist so summaries show both sides.
+- Webhook registered with A's OAuth token fires for all spaces A is in (webhook mode, home only).
+- Messages sent by A outside the assistant space: store with `category='self'`, `reason='self'` — never triage or notify them; they exist so summaries show both sides.
 - No history backfill: the DB only has messages since the listener first started. Polling catches up on restart because cursors persist; webhook mode loses messages while down.
 - Personal access tokens expire in ~12h; use integration OAuth + refresh token (stored in `kv`; migrations must keep `kv`).
 - Free ngrok URL changes on restart → listener deletes and re-registers its webhook on startup.
@@ -66,7 +66,7 @@ Python 3.11+, FastAPI, uvicorn, httpx, official `mcp` SDK **v2** (`from mcp.serv
 
 Categories: `high` | `regular`. Rule match types: sender, space, keyword, mention-of-A, and (Phase 10) `topic` (plain-language, judged by AI).
 Order: rules → if none matched, @mention of A → `high` → AI triage (if `AI_TRIAGE=on`) → `regular`.
-Precedence among matching rules: **high > regular** (ties → oldest rule). Rules always beat defaults and AI, so a `regular` space rule silences @mentions there unless a `high mention` rule exists (seeded by `scripts/seed_rules.py`). Rule logic lives in `shared/rules.py` (pure, unit-tested).
+Precedence among matching rules: **high > regular** (ties → oldest rule). Rules always beat defaults and AI, so a `regular` space rule silences @mentions there unless a `high mention` rule exists. There are **no rules by default** (`scripts/reset_demo.py` clears them): the user creates rules by chatting ("always notify me when I'm mentioned") or on the Rules page. `scripts/seed_rules.py` is only an optional shortcut. Rule logic lives in `shared/rules.py` (pure, unit-tested).
 
 Message `category`: `high`, `regular`, `self`. Each row also stores `reason` (e.g. `rule#2 sender=…`, `default:mention`, `ai: reports an outage`), `decided_by` (`rule`/`default`/`ai`/`self`), `focus_on`, `notified_at`, and `feedback` (`correct`/`should_be_high`/`should_be_regular`).
 
@@ -83,8 +83,8 @@ Message `category`: `high`, `regular`, `self`. Each row also stores `reason` (e.
 
 ## Test accounts
 
-A = filtered user (owns the integration + optional Priority bot), B = "important" sender, C = noisy sender.
-Spaces: A↔B, A↔C, group A+B+C, and A's private "Focus Assistant" space.
+A = filtered user (owns the integration), B = "important" sender, C = noisy sender.
+Spaces: A↔B, A↔C, group A+B+C, and A's private "Webex Assistant" space.
 
 ## Conventions
 
@@ -93,6 +93,7 @@ Spaces: A↔B, A↔C, group A+B+C, and A's private "Focus Assistant" space.
 - Every tool lives in `shared/tools.py` and returns `{"data": ..., "display": <rendered template>}`. The agent, the MCP server, and the UI API all call these same functions — never duplicate tool logic.
 - Deterministic paths first: slash commands and rules must work with no LLM available.
 - Weak-model friendly: use Chat Completions + `tools` (no newer OpenAI-only APIs), get structured output via a forced tool call (`llm.extract`), keep tool descriptions short with an example, and no parallel tool calls.
+- Shared code logs with `shared.log.log()` (stderr), never `print()`: it also runs inside the MCP server.
 - Desktop notification text is passed to `osascript` as arguments, never pasted into the script (message text is untrusted).
 - The UI binds to localhost only (no auth; it shows private messages).
 - Work phase by phase; finish each phase's checkpoint before starting the next. Add a dated line to the PLAN.md status log when a phase finishes or a decision changes.

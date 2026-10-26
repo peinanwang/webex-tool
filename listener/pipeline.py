@@ -3,13 +3,25 @@
 Webhook mode passes only the id (webhook payloads carry ids, not text, so we fetch the message).
 Polling mode already has the full message from the list call and passes it in.
 
+Routing:
+- a message we posted ourselves (app_posts)       → skip
+- A typing in the Webex Assistant space           → the AI assistant (listener/assistant.py)
+- A's message anywhere else                       → store as 'self' (summaries show both sides)
+- everyone else                                   → triage → store → notify if high and focus is on
+
+Triage order: rules → (no rule matched) @mention of A = high → AI triage (if on) → regular.
+
 Run `python -m listener.pipeline` to process the latest message in your 3 most recently
 active spaces (a quick test without webhooks or polling).
 """
 
+from listener import assistant
+from shared import config, db, events, focus, notifier, triage_ai
 from shared import webex_client as wx
-from shared.db import insert_message, kv_get, list_rules, mark_relayed, message_exists
+from shared.assistant_space import room_id as assistant_room_id
+from shared.log import log
 from shared.rules import evaluate
+from shared.tools import message_view
 
 # Room titles and people's names rarely change, so remember them instead of fetching per message.
 _room_cache: dict[str, dict] = {}
@@ -31,41 +43,49 @@ def _display_name(person_id: str, fallback: str) -> str:
     return _name_cache[person_id]
 
 
-def relay(row: dict) -> None:
-    """Priority bot pings A in their 1:1 with the bot (the one space A keeps unmuted)."""
-    sender = _display_name(row["person_id"], row["person_email"])
-    where = "a direct message" if row["room_type"] == "direct" else f"**{row['room_title']}**"
-    markdown = f"🔔 **{sender}** in {where}:\n\n{row['text']}\n\n_why: {row['reason']}_"
-    wx.bot_send(markdown, to_person_email=kv_get("my_email"))
-    mark_relayed(row["id"])
-
-
-def my_ids() -> tuple[str, str]:
-    """A's and the Priority bot's personIds, saved by scripts/login.py."""
-    my_id, bot_id = kv_get("my_person_id"), kv_get("bot_person_id")
-    if not my_id or not bot_id:
+def my_id() -> str:
+    """A's personId, saved by scripts/login.py."""
+    person_id = db.kv_get("my_person_id")
+    if not person_id:
         raise SystemExit("Not logged in. Run: python -m scripts.login")
-    return my_id, bot_id
+    return person_id
+
+
+def triage(row: dict) -> tuple[str, str, str]:
+    """(category, reason, decided_by) for a message from someone else."""
+    # Rules are read on every message, so changes from chat, the UI, or MCP apply immediately.
+    category, reason, decided_by = evaluate(row, db.list_rules(enabled_only=True))
+    if decided_by == "default" and not row["mentioned_me"] and triage_ai.enabled():
+        decided = triage_ai.classify(row)
+        if decided:
+            return decided
+    return category, reason, decided_by
 
 
 def process_message(message_id: str, message: dict | None = None) -> str:
-    """Fetch (if needed), classify, and store one message.
+    """Fetch (if needed), route, categorize, and store one message; notify A if it's high and focus is on.
 
-    Returns what happened, for logging and tests:
-    'duplicate', 'skipped:bot', 'self', 'notify', 'digest', or 'ignore'.
+    Returns what happened, for logging and tests: 'duplicate', 'skipped:own-post',
+    'assistant', 'skipped:assistant-space', 'self', 'high', or 'regular'.
     """
-    if message_exists(message_id):
+    if db.message_exists(message_id):
         return "duplicate"
+    # Take the posting lock so a post that is mid-way through "send, then record id" finishes first.
+    with wx.post_lock:
+        if db.is_app_post(message_id):
+            return "skipped:own-post"
 
     msg = message or wx.get_message(message_id)
-    my_id, bot_id = my_ids()
+    me = my_id()
 
-    # Our own notifications come back through the webhook too; ignore them to avoid loops.
-    if msg["personId"] == bot_id:
-        return "skipped:bot"
+    if msg["roomId"] == assistant_room_id():
+        if msg["personId"] == me:
+            assistant.on_user_message(msg)
+            return "assistant"
+        return "skipped:assistant-space"
 
     room = _get_room(msg["roomId"])
-    mentioned_me = my_id in msg.get("mentionedPeople", []) or "all" in msg.get("mentionedGroups", [])
+    mentioned_me = me in msg.get("mentionedPeople", []) or "all" in msg.get("mentionedGroups", [])
 
     text = msg.get("text", "")
     if msg.get("files"):
@@ -78,32 +98,35 @@ def process_message(message_id: str, message: dict | None = None) -> str:
         "room_type": msg.get("roomType", room.get("type", "")),
         "person_id": msg["personId"],
         "person_email": msg.get("personEmail", ""),
+        "person_name": _display_name(msg["personId"], msg.get("personEmail", "")),
         "text": text,
         "created": msg["created"],
         "mentioned_me": int(mentioned_me),
+        # Recorded per message so the Triage tab and summaries can tell "missed during focus" apart.
+        "focus_on": int(focus.is_on()),
     }
 
-    if msg["personId"] == my_id:
-        # A's own messages: kept for summary context, never run through rules or relayed.
-        row["status"], row["reason"] = "self", "self"
+    if msg["personId"] == me:
+        # A's own messages: kept for summary context, never triaged or notified.
+        row["category"], row["reason"], row["decided_by"] = "self", "self", "self"
     else:
-        # Rules are read on every message, so changes made through MCP apply immediately.
-        row["status"], row["reason"] = evaluate(row, list_rules(enabled_only=True))
+        row["category"], row["reason"], row["decided_by"] = triage(row)
 
-    if not insert_message(row):
+    if not db.insert_message(row):
         return "duplicate"  # another delivery of the same message won the race
 
+    should_notify = row["category"] == "high" and row["focus_on"]
+    quiet_note = "  [focus off: no ping]" if row["category"] == "high" and not should_notify else ""
     preview = text if len(text) <= 60 else text[:57] + "..."
-    print(f"[{row['status']}] {row['person_email'] or '?'} in {row['room_title'] or '?'}: {preview!r}"
-          f"  ({row['reason']})", flush=True)
+    log(f"[{row['category']}] {row['person_email'] or '?'} in {row['room_title'] or '?'}: {preview!r}"
+        f"  ({row['reason']}){quiet_note}")
 
-    if row["status"] == "notify":
-        try:
-            relay(row)
-        except Exception as exc:
-            # The message is still stored; only the ping failed.
-            print(f"[error] relay failed for {row['id']}: {exc}", flush=True)
-    return row["status"]
+    if should_notify:
+        delivered = notifier.notify(row)  # failures are logged inside; the message is stored either way
+        if not delivered:
+            log(f"[warn] no notify channel worked for {row['id']} (NOTIFY_CHANNELS={','.join(config.NOTIFY_CHANNELS)})")
+    events.publish("message_stored", message_view(db.get_message(row["id"])))
+    return row["category"]
 
 
 if __name__ == "__main__":

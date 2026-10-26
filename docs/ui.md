@@ -29,11 +29,11 @@ The **top bar** is always visible. It shows the focus switch with a session time
 
 ## 💬 Assistant (Phase 9)
 
-The same thread as the Webex Focus Assistant space, styled like Webex, with richer rendering.
+The same thread as the Webex Assistant space, styled like Webex, with richer rendering.
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│  Focus Assistant                                   via Webex ⓦ │
+│  Webex Assistant                                   via Webex ⓦ │
 │                                                               │
 │  You  10:02  notify me when Bob writes                        │
 │  🤖   10:02  ✅ Added rule #5: messages from bob@acme.com → High │
@@ -160,3 +160,15 @@ For non-technical teammates. They change the wording, not the code.
 | `GET/POST /api/summaries` · `POST /api/summaries/{id}/email` · `GET /api/outbox/{file}` | summary tools · email outbox preview |
 | `GET/PUT /api/templates/{name}` · `POST /api/templates/{name}/preview` | template store |
 | `GET /api/events` | Server-Sent Events: `message_stored`, `chat_turn`, `focus_changed`, `summary_created` |
+
+## Testing the UI
+
+Three levels, from fastest to most realistic:
+
+| Level | How | What it proves |
+|---|---|---|
+| **API tests** (automated) | `pytest tests/test_api.py` | Every endpoint the UI calls returns the right data and friendly errors. No browser, no Webex |
+| **UI sandbox** (by hand) | `./dev.sh sandbox` → http://localhost:5173 (dev server with instant reload), or `python -m scripts.ui_sandbox` → http://localhost:8765 (built UI); then `python -m scripts.ui_sandbox say <bob\|carol\|dana> "<text>" [--space Team] [--mention]` to make messages arrive | The real page, API, triage (incl. AI if a key is set), live updates, chat, summaries, and the Templates editor, on fake data. Webex is disconnected; the DB, outbox, and a copy of `templates/` live in a temp folder |
+| **Real accounts** (by hand) | `python -m listener` + accounts A/B/C, following [VERIFY.md §10](VERIFY.md#10-the-web-page-tab-by-tab) | Everything, including the Webex ↔ page mirroring |
+
+Next step, if wanted: **automated browser tests** with Playwright (`ui/tests/*.spec.ts`), run against the sandbox. They'd click through the main flows (toggle focus, receive a message, correct it, add a rule with preview, edit a template) on every change.
